@@ -1,0 +1,40 @@
+---
+title: "Propensity_scores"
+format: html
+editor: visual
+---
+
+```{r balance plots}
+
+install.packages("cobalt")
+library("cobalt") # Balance groups 
+
+data("lalonde")
+
+head(lalonde)
+
+# plot distributions for stress variable
+bal.plot(
+  x = meditate ~ stress, #formula
+  data = sleep_data, #dataset
+  var.name = "stress", #variable
+  colors = c("#E69F00", "#009E73") #set fill colors
+)
+
+```
+
+```{r balance numbers}
+
+# Therefore, the following guidelines can be used to indicate good balance:
+# SMD between -0.1 and 0.1
+# Variance ratio between 0.5 and 2.0
+
+bal.tab (
+  x = low_ef ~ age + cholesterol + heart_attack,
+  data = los_data,
+  disp.v.ratio = TRUE, # display variance ratio
+  binary = "std" #SMDs for binary variables 
+)
+
+```
+
