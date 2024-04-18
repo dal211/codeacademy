@@ -34,7 +34,46 @@ bal.tab (
   data = los_data,
   disp.v.ratio = TRUE, # display variance ratio
   binary = "std" #SMDs for binary variables 
+
 )
+
+# Balance Measures
+#                 Type Diff.Un V.Ratio.Un
+# age          Contin.  0.5575     1.1072 <- unequal means (SMD), ok variance 
+# cholesterol   Binary  0.5238          . <- unequal means (SMD)
+# heart_attack  Binary  0.6162          . <- unequal means (SMD)
+
+```
+
+```{r calculate propensity scores}
+
+# Propensity scores are the probability of receiving treatment (e.g. meditate) based on all the characteristics in the data. You use logistic regression which models the dependent variable as a binary outcome (between 0 and 1). Stress may lower one's probability of wanting to meditate
+
+prop_model <- glm(
+  formula = meditate ~ stress,
+  data = sleep_data,
+  family = "binomial" # Specify logistic regression
+)
+
+ef_ps <- predict(ef_model, type = "response")
+ef_hist <- hist(ef_ps)
+
+
+```
+
+```{r use propensity scores to create weights}
+
+# inverse probability of treatment weighting (IPTW).
+los_sample$ATE_weight <- ifelse(
+  los_sample$low_ef == 0, # if control
+  1 / (1 - los_sample$ps),  # control weight
+  1 / los_sample$ps # else, treatment weight
+)
+
+los_sample$ATT_weight <- ifelse(
+  los_sample$low_ef == 0, 
+  los_sample$ps / (1 - los_sample$ps), 
+  1)
 
 ```
 
