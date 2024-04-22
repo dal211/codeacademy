@@ -77,3 +77,100 @@ los_sample$ATT_weight <- ifelse(
 
 ```
 
+```{r use weightit to create iptw weights}
+
+# import library
+library(WeightIt)
+# model propensity scores and IPTW weights
+iptw_sleep <- weightit(
+  formula = meditate ~ stress, #propensity model
+  data = sleep_data, #dataset
+  method = "ps", #use IPTW
+  estimand = "ATT" #estimand
+)
+
+iptw_ef <- weightit(
+  formula = low_ef ~ age + cholesterol, # propensity model
+  data = los_data, # dataset
+  method = "ps", # use IPTW
+  estimand = "ATT"
+)
+
+
+```
+
+```{r check balance after propensity score weights}
+
+ps_bal <-
+  bal.plot(
+    x = iptw_ef,
+    var.name = "prop.score", # propensity scores
+    which = "both", # before and after
+    colors = c("#E69F00", "#009E73")
+  )
+
+ps_love <- 
+  love.plot (
+    x = iptw_ef,
+    binary = "std", # use SMD
+    thresholds = c(m = 0.1), # guidelines
+    colors = c("#E69F00", "#009E73") #sets fill colors
+  )
+
+```
+
+```{r what if the balance or love plot isn't within threshold, rerun the model}
+
+# Maybe the differences between the two groups are because of other characteristics so we have to account for those
+
+iptw_ef2 <- weightit(
+  formula = low_ef ~ age + cholesterol + heart_attack,
+  data = los_data,
+  estimand = "ATT",
+  method = "ps"
+)
+
+love_update <- 
+  love.plot(
+    x = iptw_ef2,
+    binary = "std",
+    thresholds = c(m = 0.1),
+    colors = c("#E69F00", "#009E73") #fill colors  
+  )
+
+```
+
+```{r inference}
+
+library(WeightIt)
+library(lmtest)
+library(sandwich)
+# import dataset
+los_data <- read.csv("los_data.csv")
+
+# create IPTW weights
+iptw_ef2 <- weightit(
+  formula = low_ef ~ age + cholesterol + heart_attack, #propensity model
+  data = los_data, #dataset
+  estimand = "ATT", #effect
+  method = "ps" #use IPTW
+)
+
+# Create outcome model
+outcome_mod <- glm(
+  formula = hospital_los ~ low_ef + age + cholesterol + heart_attack,
+  data = los_data,
+  weights = iptw_ef2$weights
+)
+
+# Get coefficients with robust standard errors
+# weighting may cause standard errors to be inaccurate, so we need to use a more robust calculation of the standard errors
+att_robust <-
+  coeftest(
+    outcome_mod,
+    vcov. = vcovHC
+  )
+
+
+```
+
