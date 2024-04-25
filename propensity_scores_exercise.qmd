@@ -34,7 +34,6 @@ bal.tab (
   data = los_data,
   disp.v.ratio = TRUE, # display variance ratio
   binary = "std" #SMDs for binary variables 
-
 )
 
 # Balance Measures
@@ -171,6 +170,122 @@ att_robust <-
     vcov. = vcovHC
   )
 
+
+```
+
+# Impact of Cover Crops on Wheat Crop Yields
+
+
+First, let’s assess overlap and balance visually for a couple of variables to compare counties with AT LEAST 10% of farms using cover crops and counties with LESS THAN 10% of farms using cover crops.
+
+Create a balance plot for the age_avg variable. Do the treatment and control distributions appear to be centered in the same location and have similar spreads?
+
+```{r}
+# Balance plot for the average age
+bal.plot(
+  x = cover_10 ~ age_avg,
+  data = farm_df,
+  var.name = "age_avg",
+  colors = c("#E69F00", "#009E73") #set fill colors  
+)
+
+```
+
+Now create a balance plot for the categorical variable region. Are the proportions of counties in the treatment versus control groups similar across the four regions?
+
+```{r}
+# Balance plot for geographic region
+bal.plot(
+  x = cover_10 ~ region,
+  data = farm_df,
+  var.name = "region",
+  colors = c("#E69F00", "#009E73") #set fill colors  
+)
+```
+
+So far, it looks like we have quite a bit of imbalance between the treatment groups to deal with especially for region. Let’s assess balance numerically to quantify this imbalance more precisely. Create a balance table to show standardized mean differences (SMD) and variance ratios for all the predictor variables according to the treatment group. Check whether the balance measurements fall outside of the guidelines of ±0.1 for SMDs and between 0.5 and 2 for variance ratios.
+
+```{r}
+
+# Balance table to show SMD and variance ratio of between groups
+bal.tab (
+  x = cover_10 ~ region + total_avg + age_avg + experience_avg + insurance_avg + easement_p + conservation_till_avg + fertilizer_per_area,
+  data = farm_df,
+  disp.v.ratio = TRUE, # display variance ratio
+  binary = "std" #SMDs for binary variables
+)
+
+```
+
+```{r iptw weighting}
+
+# Calculate IPTW weights with initial propensity score model
+farm_iptw <- weightit(
+  formula = cover_10 ~ region + total_avg + insurance_avg + fertilizer_per_area,
+  data = farm_df, 
+  method = "ps", # use IPTW
+  estimand = "ATE"
+)
+
+```
+
+```{r}
+# Love plot with threshold lines to show SMD balance before and after weighting
+love.plot (
+  x = farm_iptw,
+  binary = "std", # use SMD
+  thresholds = c(m = 0.1), # guidelines
+  colors = c("#E69F00", "#009E73") #sets fill colors  
+)
+```
+
+```{r}
+
+# balance is much better, but let's add more variables to see if there is better balance because of omitted variables
+
+# Re-calculate IPTW weights with updated propensity score model
+farm_iptw2 <- weightit(
+  formula = cover_10 ~ region + total_avg + insurance_avg + age_avg + experience_avg + easement_p + conservation_till_avg,
+  data = farm_df, 
+  method = "ps", # use IPTW
+  estimand = "ATE"
+)
+
+
+```
+
+```{r}
+
+# Plot Love plot of SMDs with threshold lines to show balance before and after IPTW procedure
+love.plot (
+  x = farm_iptw2,
+  binary = "std", # use SMD
+  thresholds = c(m = 0.1), # guidelines
+  colors = c("#E69F00", "#009E73") #sets fill colors  
+)
+
+```
+
+```{r}
+
+# Balance plot of propensity scores before and after weighting
+bal.plot(
+  x = farm_iptw2, # weightit object
+  var.name = "prop.score", # propensity scores
+  which = "both", # before and after
+  colors = c("#E69F00", "#009E73") #sets fill colors    
+)
+
+```
+
+```{r}
+
+# Fit outcome regression model
+yield_mod <- glm(
+  formula = total_yield ~ cover_10 + region + total_avg + age_avg + experience_avg + insurance_avg + easement_p + conservation_till_avg,
+  data = farm_df,
+  weights = farm_iptw2$weights
+)
 
 ```
 

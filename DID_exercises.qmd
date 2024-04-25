@@ -1,0 +1,55 @@
+---
+title: "difference_in_differences"
+format: html
+editor: visual
+---
+
+Imagine that a California state law was passed in 2016 that raised the minimum wage beginning in the year 2017. We are interested in what this law’s impact has been on student wages since student jobs often pay low wages.
+
+We have the data on the average student wages at all California public universities from the year 2007 to 2017, displayed in the plot in the learning environment. We note that wages rise and fall from year to year, but we see a particularly large rise from 2016 to 2017.
+
+It’s easy to assume the large increase was entirely due to the new minimum wage law. But what would average student wages in 2017 have looked like had the law NOT been passed?
+
+Would wages still have increased a lot, meaning the law had little impact?
+Would wages have decreased, meaning the law had an even larger impact than just the difference between 2016 and 2017 wages?
+The fundamental principle of causal inference tells us that we can’t observe both situations, so we need to use other observed data as a substitute for what student wages in California would have looked like in 2017 had the law not passed.
+
+```{r}
+
+# import libraries
+library(dplyr)
+library(ggplot2)
+# plot wages versus years
+ca_wages <- wages %>%
+  #only California schools
+  filter(state == "California") %>% 
+  #wages over time
+  ggplot(aes(x = year, y = avg_wage)) + 
+  #line plot
+  geom_line()
+
+# dashed line vertical
+ca_wages +
+  geom_vline(xintercept = 2016, linetype = "dashed") +
+  scale_x_continuous(breaks = c(2007:2017))
+
+```
+
+Let’s say there was a new entertainment tax in Sydney starting in 2018. You want to find out if the tax affected movie theater ticket sales. You have data about average annual movie theater ticket sales in Sydney from 2012 through 2019 with the following variables:
+
+```{r}
+
+tickets <- read.csv("ticket_sales.csv")
+
+syd_sales <- tickets %>%
+  filter(city == "Sydney") %>%
+  ggplot(aes(x = year, y = sales)) +
+  geom_line ()
+
+syd_sales + geom_vline(xintercept = 2018, linetype = "dashed") +
+scale_x_continuous(breaks = c(2012:2019))
+
+```
+
+We see a decrease in ticket sales in 2018 when the tax was implemented, but it was already declining in 2017, so what portion was due to the tax?
+
