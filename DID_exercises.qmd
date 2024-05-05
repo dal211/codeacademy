@@ -53,3 +53,175 @@ scale_x_continuous(breaks = c(2012:2019))
 
 We see a decrease in ticket sales in 2018 when the tax was implemented, but it was already declining in 2017, so what portion was due to the tax?
 
+It is impossible to know what truly would have happened in California schools if the law had never happened. However, we can look for another state whose average student wages that follow a similar pattern over time — but did not receive the same treatment. We can use the other state’s data to approximate the counterfactual. With DID, we use the trend of a control group to estimate the counterfactual trend for the treated. In other words, we use DID to estimate the average treatment effect on the treated (ATT).
+
+In this example, a control trend might be the average student wage of universities in Washington, given that Washington did not implement a new minimum wage law. We can view these two groups in a single plot using the following code:
+
+# Exercise
+
+The tickets dataset also contains data on average ticket sales in Toronto. Create a line plot that shows the ticket sales for both Toronto and Sydney over the same years. Be sure to change the color and type of line by city. Does Toronto have a similar trend in ticket sales from 2012 to 2018?
+
+```{r}
+
+ggplot(data = tickets, aes(x = year, y = sales, color = city, linetype = city)) +
+  geom_line() +
+  #vertical line at 2018
+  geom_vline(xintercept = 2018, linetype = "dashed") +
+  #x-axis scale 2012 to 2018
+  scale_x_continuous(breaks = c(2012:2018))
+
+```
+
+
+In this we use Toronto as a control for Sydney, and ticket sales rose after 2018 while falling in Sydney. We don't know however, how much that tax affected Sydney
+
+# Use Linear Regression to calculate DID
+
+While we were able to estimate the ATT through mean differences alone, we can also use linear regression for DID. A simple DID regression model predicts the outcome from the variables for treatment group and time, along with the interaction of treatment with time.
+
+To simplify our output, we will first transform the state variable to a treatment indicator called treat (1 for California and 0 for Washington). Then we transform year to a time indicator called time (1 for 2017 and 0 for 2016).
+
+```{r}
+
+# transform state to treat
+wages2$treat <- ifelse(wages2$state=="California",1,0)
+# transform year to time
+wages2$time <- ifelse(wages2$year==2017,1,0)
+
+
+```
+
+```{r}
+
+#        state treat year time  avg_wage
+# 1 California     1 2016    0 13.311279
+# 2 California     1 2017    1 16.000000
+# 3 Washington     0 2016    0  9.728146
+# 4 Washington     0 2017    1 10.000000
+
+```
+
+To create a DID regression for our student wage data, we run a model that predicts average student wages from the treatment, time, and the interaction of treatment and time. Note that in R, treat*time is equivalent to treat + time + treat:time.
+
+```{r}
+
+did_mod <- lm(
+  #include interaction
+  avg_wage ~ treat*year,
+  #use subsetted data 
+  data = wages2 
+)
+
+```
+
+When we print did_mod we get the following output. Note that the coefficient on the interaction term treat:year is exactly what we computed for the ATT by taking the difference of means. We estimate the impact of the minimum wage law on California student wages to be an increase of about $2.42.
+
+```{r}
+
+# Call:
+# lm(formula = avg_wage ~ treat * time, data = wages2)
+# 
+# Coefficients:
+# (Intercept)        treat         time   treat:time  
+#      9.7281       3.5831       0.2719       2.4169
+
+```
+
+What do all the other coefficients represent?
+
+Intercept indicates the expected value for pre-treatment average student wages for the control group (Washington 2016).
+treat is the difference between the control group and the treatment group at the pre-treatment time (California 2016 - Washington 2016).
+time is the difference between the pre-treatment and post-treatment times for the control group (Washington 2017 - Washington 2016).
+Combinations of these coefficients give us back all four means from our dataset.
+
+
+```{r, message=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+# Task 1
+```{r}
+# read in data
+eras <- read.csv("eras_df.csv")
+```
+# Task 2
+```{r}
+# print head of dataset
+head(eras)
+
+```
+# Task 3
+```{r}
+# line plot for hospital B
+hos_b <- eras %>% 
+  filter(hospital == "Hospital B") %>%
+  ggplot(aes(x = year, y = los)) +
+  geom_line() 
+
+hos_b + 
+  geom_vline(xintercept = 2015, linetype = "dashed") +
+  scale_x_continuous(breaks = c(2010:2019))
+
+
+  ```
+# Task 4
+```{r}
+# line plot for both hospitals
+ggplot(data = eras, aes(x = year, y = los, color = hospital, linetype = hospital))+
+  geom_line() +
+  geom_vline(xintercept = 2018, linetype = "dashed") +
+  scale_x_continuous(breaks = c(2010:2019))
+
+
+```
+# Task 5
+```{r}
+# restrict data to 2014-2015
+eras2 <- eras %>% filter(year %in% c(2014, 2015))
+
+# view dataset
+head(eras2)
+
+```
+# Task 6
+```{r}
+# calculate differences within hospitals
+Adiff <- 3.705750 - 4.464623
+Bdiff <- 2.472485 - 4.026384
+
+print(Adiff)
+print(Bdiff)
+
+```
+# Task 7
+```{r}
+# calculate difference in differences
+Bdiff - Adiff
+
+```
+# Task 8
+```{r}
+# create indicators
+eras2 <- eras2 %>% 
+  mutate(treat = ifelse(hospital == "Hospital B", 1, 0)) %>%
+  mutate(time = ifelse(year == 2015, 1, 0))
+
+head(eras2)
+```
+# Task 9
+```{r}
+# fit linear model with interaction between treat and time
+hospital_model <- lm(los ~ treat * time, data = eras2)
+
+# view model
+hospital_model
+
+# view model
+print(hospital_model)
+
+```
+# Task 10
+```{r}
+# print ATT
+hospital_model$coefficients
+```
